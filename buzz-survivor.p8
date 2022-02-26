@@ -26,14 +26,14 @@ function _draw()
    local c=flr(
     sin(0.03*(fx+x))*2^2+
     cos(0.04*(fy+y))*2^2)%3+1
-   if c==3 then c=4 end
+   if c==3 then c=5 end
    local d=flr(
     sin(0.015*(fx+x))*2^2+
-    cos(0.02*(fy+y))*2^2)%3
+    cos(0.02*(fy+y))*2^2)%5
    for z=1,d do
-    local r=(fx+x+fy+y+z+c)^2
-    pset(
-     x*8-sx+r%3,y*8-sy+r%5,c)
+    local r=(fx+x)^2+(fy+y)^2+(z+c)^2
+    circfill(
+     x*8-sx+r%9,y*8-sy+r%15,(z-1)%3,c)
    end
   end
  end
