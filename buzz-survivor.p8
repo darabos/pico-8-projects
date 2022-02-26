@@ -36,7 +36,8 @@ function _draw()
    end
   end
  end
- camera(p.x-60,p.y-60)
+ camera(lx or p.x,ly or p.y)
+ lx,ly=p.x-60,p.y-60
  if p.wounded then
   for i=1,15 do
    pal(i,8)
@@ -87,14 +88,14 @@ function _update()
   end
   e.flip=dx<0
   local k=(e.x-p.x)\10+(e.y-p.y)\10*100
-  for dk1=0,1 do for dk2=0,1 do
+  for dk1=-1,1 do for dk2=-1,1 do
    for j,e2 in pairs(collision[k+dk1+100*dk2]) do
     if e2!=e then
      local dx=e.x-e2.x
      local dy=e.y-e2.y
      if abs(dx)+abs(dy)<10 then
-      e.x+=sgn(dx)*spd/2
-      e.y+=sgn(dy)*spd/2
+      e.x+=sgn(dx)*spd
+      e.y+=sgn(dy)*spd
      end
     end
    end
