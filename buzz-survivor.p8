@@ -12,14 +12,20 @@ function _draw()
  local fx=p.x\8
  local sy=p.y%8
  local fy=p.y\8
+ cls(3)
  for x=-1,16 do
   for y=-1,16 do
-   c=flr(
+   local c=flr(
     sin(0.03*(fx+x))*2^2+
-    cos(0.04*(fy+y))*2^2)%4
-   rectfill(
-    x*8-sx,y*8-sy,
-    x*8-sx+8,y*8-sy+8,c)
+    cos(0.04*(fy+y))*2^2)%3+4
+   local d=flr(
+    sin(0.015*(fx+x))*2^2+
+    cos(0.02*(fy+y))*2^2)%3+4
+   for z=1,d-4 do
+    local r=(fx+x+fy+y+z+c)^2
+    pset(
+     x*8-sx+r%3,y*8-sy+r%5,c)
+   end
   end
  end
  camera(p.x-60,p.y-60)
