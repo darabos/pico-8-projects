@@ -6,6 +6,7 @@ function _init()
   x=rnd(10000),y=rnd(10000),
   spd=1,
  }
+ start_time=t()
  enemies={}
  for i=1,10 do
   add(enemies,newenemy())
@@ -50,8 +51,15 @@ function _draw()
  foreach(enemies,function(e)
   spr(e.spr,e.x,e.y,1,1,e.flip)
  end)
+ --gui
  camera()
- print(tostr(#enemies),10,10,15)
+ local tt=flr(t()-start_time)
+ print(
+  (tt\600==0and"0"or"")
+  ..tostr(tt\60)
+  ..(tt%60\10==0and":0"or":")
+  ..tostr(tt%60),1,1,15)
+ print(tostr(#enemies),80,1,15)
 end
 
 function _update()
@@ -61,9 +69,12 @@ function _update()
  if btn(➡️) then p.x+=p.spd end
  if btn(⬆️) then p.y-=p.spd end
  if btn(⬇️) then p.y+=p.spd end
+ function key(e,o)
+  return (e.x-p.x+o)\10+(e.y-p.y+o)\10*100
+ end
  local collision={}
  for i,e in pairs(enemies) do
-  local k=(e.x-p.x)\10+(e.y-p.y)\10*100
+  local k=key(e,0)
   if collision[k] then
    add(collision[k],e)
   else
@@ -74,26 +85,30 @@ function _update()
   local spd=1/2
   local dx=p.x-e.x
   local dy=p.y-e.y
-  if abs(dx)+abs(dy)>200 then
+  local l=sqrt((dx/10)^2+(dy/10)^2)*10
+  local max_dist=120
+  if abs(dx)>max_dist
+  or abs(dy)>max_dist then
    del(enemies,e)
   end
-  if abs(dx)+abs(dy)<(e.r or 5) then
-   p.wounded=true
+  if l<e.r then
+   p.wounded=e.x
   end
   if abs(dx)>2 then
-   e.x+=sgn(dx)*spd
+   e.x+=dx*spd/l
   end
   if abs(dy)>2 then
-   e.y+=sgn(dy)*spd
+   e.y+=dy*spd/l
   end
   e.flip=dx<0
-  local k=(e.x-p.x)\10+(e.y-p.y)\10*100
-  for dk1=-1,1 do for dk2=-1,1 do
+  local k=key(e,-5)
+  for dk1=0,1 do for dk2=0,1 do
    for j,e2 in pairs(collision[k+dk1+100*dk2]) do
     if e2!=e then
      local dx=e.x-e2.x
      local dy=e.y-e2.y
-     if abs(dx)+abs(dy)<10 then
+     local l=abs(dx)+abs(dy)
+     if l<e.r+e2.r+5 then
       e.x+=sgn(dx)*spd
       e.y+=sgn(dy)*spd
      end
@@ -107,11 +122,11 @@ function _update()
 end
 
 function spawnpos()
- local x=0
- local y=0
- while abs(x)<80 and abs(y)<80 do
-  x=rnd(200)-100
-  y=rnd(200)-100
+ local x,y=0,0
+ local excl,incl=60,90
+ while abs(x)<excl and abs(y)<excl do
+  x=rnd(incl*2)-incl
+  y=rnd(incl*2)-incl
  end
  return p.x+x,p.y+y
 end
@@ -119,7 +134,8 @@ end
 function newenemy()
  local x,y=spawnpos()
  local e={x=x,y=y}
- e.spr=rnd(4)+2
+ e.spr=flr(rnd(4)+2)
+ e.r=e.spr
  return e
 end
 __gfx__
