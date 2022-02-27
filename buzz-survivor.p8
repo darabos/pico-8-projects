@@ -3,7 +3,7 @@ version 35
 __lua__
 wpnclasses={
  {name="net",
-  phase=0,len=10,spd=0.05,dmg=1,
+  phase=0,len=10,spd=0.02,dmg=1,
   draw=function(s)
    line(
     p.x,p.y,
@@ -20,10 +20,10 @@ wpnclasses={
    for i=1,s.len\5 do
     local hx=p.x+5*i*cos(s.spd*s.phase)
     local hy=p.y+5*i*sin(s.spd*s.phase)
-    local k=collision_key({x=hx,y=hy},0)
+    local k=collisionkey({x=hx,y=hy},0)
     if k!=last then
      last=k
-     foreach(collision_map[k],function(e)
+     foreach(collisionmap[k],function(e)
       hit(e,s.dmg)
      end)
     end
@@ -34,13 +34,14 @@ wpnclasses={
 function _init()
  p={
   x=rnd(10000),y=rnd(10000),
-  spr=1,spd=1.5,
+  spr=1,spd=1.5,level=1,xp=0,
   weapons={wpnclasses[1]},
  }
  cam={x=p.x,y=p.y}
  start_time=t()
  effects={}
  enemies={}
+ xps={}
  for i=1,10 do
   add(enemies,newenemy())
  end
@@ -76,6 +77,14 @@ function _draw()
  cam.x+=0.05*(p.x+flr(p.vx*20))
  cam.y*=0.95
  cam.y+=0.05*(p.y+flr(p.vy*20))
+ --xp
+ local ck=collisionkey(cam,0)
+ for i=-6,7 do for j=-6,7 do
+  local v=xps[ck+i+100*j]
+  if v then for i=1,#v do
+   pset(v[i].x,v[i].y,12)
+  end end
+ end end
  --player
  if p.wounded then
   for i=1,15 do
@@ -110,12 +119,26 @@ function _draw()
   ..tostr(tt\60)
   ..(tt%60\10==0and":0"or":")
   ..tostr(tt%60),1,1,15)
- print(p.d,80,1,7)
+ rectfill(
+  24,1,
+  24+87*min(1,p.xp/p.nextlevelxp),5,12)
+ rprint(p.level,124,1,15)
+end
+
+function rprint(txt,x,y,c)
+ txt=tostr(txt)
+ print(txt,x-#txt*4+4,y,c)
 end
 
 function _update()
  ts+=1
  --player
+ p.nextlevelxp=10*p.level^2
+ if p.xp>=p.nextlevelxp then
+  p.xp-=p.nextlevelxp
+  p.level+=1
+  p.nextlevelxp=10*p.level^2
+ end
  p.wounded=false
  p.vx=0 p.vy=0
  if btn(⬅️) then
@@ -134,10 +157,23 @@ function _update()
  end
  p.x+=p.vx
  p.y+=p.vy
+ --xp
+ local pk=collisionkey(p,-5)
+ for i=0,1 do for j=0,1 do
+  local v=xps[pk+i+100*j]
+  foreach(v,function(xp)
+   local dx=xp.x-p.x
+   local dy=xp.y-p.y
+   if abs(dx)+abs(dy)<5 then
+    del(v,xp)
+    p.xp+=xp.value
+   end
+  end)
+ end end
  --enemies
- collision_map={}
- local key=collision_key
- local collision=collision_map
+ collisionmap={}
+ local key=collisionkey
+ local collision=collisionmap
  for i,e in pairs(enemies) do
   local k=key(e,0)
   if collision[k] then
@@ -181,18 +217,17 @@ function _update()
    end
   end end
  end
- if #enemies<250 and rnd(100)<10 then
+ if #enemies<250 and rnd(100)<100 then
   add(enemies,newenemy())
  end
  --weapons
- p.d=""
  foreach(p.weapons,function(w)
   w.update(w)
  end)
 end
 
-function collision_key(e,o)
- return (e.x-p.x+o)\10+(e.y-p.y+o)\10*100
+function collisionkey(e,o)
+ return (e.x+o)\10+(e.y+o)\10*100
 end
 
 function spawnpos()
@@ -207,7 +242,7 @@ end
 
 function newenemy()
  local x,y=spawnpos()
- local e={x=x,y=y,hp=1}
+ local e={x=x,y=y,hp=1,xp=1}
  e.spr=flr(rnd(4)+2)
  e.r=e.spr
  return e
@@ -218,6 +253,7 @@ function hit(e,dmg)
  addeffect(e,dmg*2,9)
  if e.hp<=0 then
   del(enemies,e)
+  addxp(e,e.xp)
  end
 end
 
@@ -229,6 +265,25 @@ function addeffect(p,n,c)
   add(effects,{
    c=c,x=p.x,y=p.y,ttl=rnd(5)+5,
    vx=s*cos(ph),vy=s*sin(ph)})
+ end
+end
+
+function addxp(p,n)
+ for i=0,n-1 do
+  local xp={
+   value=1,
+   x=p.x+rnd(i*2)-i,
+   y=p.y+rnd(i*2)-i}
+  local k=collisionkey(xp,0)
+  if xps[k] then
+   if #xps[k]<20 then
+    add(xps[k],xp)
+   else
+    xps[k][flr(rnd(20)+1)].value+=1
+   end
+  else
+   xps[k]={xp}
+  end
  end
 end
 __gfx__
