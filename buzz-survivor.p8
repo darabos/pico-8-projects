@@ -1,14 +1,45 @@
 pico-8 cartridge // http://www.pico-8.com
 version 35
 __lua__
+wpnclasses={
+ {name="net",
+  phase=0,len=10,spd=0.05,dmg=1,
+  draw=function(s)
+   line(
+    p.x,p.y,
+    p.x+s.len*cos(s.spd*(s.phase-1)),
+    p.y+s.len*sin(s.spd*(s.phase-1)),12)
+   line(
+    p.x,p.y,
+    p.x+s.len*cos(s.spd*s.phase),
+    p.y+s.len*sin(s.spd*s.phase),7)
+  end,
+  update=function(s)
+   s.phase+=1
+   local last=nil
+   for i=1,s.len\5 do
+    local hx=p.x+5*i*cos(s.spd*s.phase)
+    local hy=p.y+5*i*sin(s.spd*s.phase)
+    local k=collision_key({x=hx,y=hy},0)
+    if k!=last then
+     last=k
+     foreach(collision_map[k],function(e)
+      hit(e,s.dmg)
+     end)
+    end
+   end
+  end}
+}
+
 function _init()
  p={
   x=rnd(10000),y=rnd(10000),
   spr=1,spd=1.5,
-  weapons={},
+  weapons={wpnclasses[1]},
  }
  cam={x=p.x,y=p.y}
  start_time=t()
+ effects={}
  enemies={}
  for i=1,10 do
   add(enemies,newenemy())
@@ -18,6 +49,7 @@ end
 
 function _draw()
  camera()
+ --terrain
  local sx=cam.x%8
  local fx=cam.x\8
  local sy=cam.y%8
@@ -35,7 +67,7 @@ function _draw()
    for z=1,d do
     local r=(fx+x)^2+(fy+y)^2+(z+c)^2
     circfill(
-     x*8-sx+r%9,y*8-sy+r%15,(z-1)%3,c)
+     x*8-sx+r%11,y*8-sy+r%9,(z-1)%3,c)
    end
   end
  end
@@ -44,30 +76,46 @@ function _draw()
  cam.x+=0.05*(p.x+flr(p.vx*20))
  cam.y*=0.95
  cam.y+=0.05*(p.y+flr(p.vy*20))
+ --player
  if p.wounded then
   for i=1,15 do
    pal(i,8)
   end
-  spr(p.spr,p.x,p.y,1,1,p.flip)
+  spr(p.spr,p.x-4,p.y-4,1,1,p.flip)
   pal()
  else
-  spr(p.spr,p.x,p.y,1,1,p.flip)
+  spr(p.spr,p.x-4,p.y-4,1,1,p.flip)
  end
+ --enemies
  foreach(enemies,function(e)
-  spr(e.spr,e.x,e.y,1,1,e.flip)
+  spr(e.spr,e.x-4,e.y-4,1,1,e.flip)
+ end)
+ --effects
+ foreach(effects,function(e)
+  e.ttl-=1
+  if e.ttl<0 then del(effects,e) return end
+  e.x+=e.vx
+  e.y+=e.vy
+  pset(e.x,e.y,e.c)
+ end)
+ --weapons
+ foreach(p.weapons,function(w)
+  w.draw(w)
  end)
  --gui
  camera()
  local tt=flr(t()-start_time)
- print(
+ print(--clock
   (tt\600==0and"0"or"")
   ..tostr(tt\60)
   ..(tt%60\10==0and":0"or":")
   ..tostr(tt%60),1,1,15)
+ print(p.d,80,1,7)
 end
 
 function _update()
  ts+=1
+ --player
  p.wounded=false
  p.vx=0 p.vy=0
  if btn(⬅️) then
@@ -86,10 +134,10 @@ function _update()
  end
  p.x+=p.vx
  p.y+=p.vy
- function key(e,o)
-  return (e.x-p.x+o)\10+(e.y-p.y+o)\10*100
- end
- local collision={}
+ --enemies
+ collision_map={}
+ local key=collision_key
+ local collision=collision_map
  for i,e in pairs(enemies) do
   local k=key(e,0)
   if collision[k] then
@@ -133,9 +181,18 @@ function _update()
    end
   end end
  end
- if #enemies<250 and rnd(100)<100 then
+ if #enemies<250 and rnd(100)<10 then
   add(enemies,newenemy())
  end
+ --weapons
+ p.d=""
+ foreach(p.weapons,function(w)
+  w.update(w)
+ end)
+end
+
+function collision_key(e,o)
+ return (e.x-p.x+o)\10+(e.y-p.y+o)\10*100
 end
 
 function spawnpos()
@@ -150,10 +207,29 @@ end
 
 function newenemy()
  local x,y=spawnpos()
- local e={x=x,y=y}
+ local e={x=x,y=y,hp=1}
  e.spr=flr(rnd(4)+2)
  e.r=e.spr
  return e
+end
+
+function hit(e,dmg)
+ e.hp-=dmg
+ addeffect(e,dmg*2,9)
+ if e.hp<=0 then
+  del(enemies,e)
+ end
+end
+
+function addeffect(p,n,c)
+ if #effects>250 then return end
+ for i=1,n do
+  local ph=rnd()
+  local s=rnd()+1
+  add(effects,{
+   c=c,x=p.x,y=p.y,ttl=rnd(5)+5,
+   vx=s*cos(ph),vy=s*sin(ph)})
+ end
 end
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000009a00000000000000000000000000000000000000000000000000
