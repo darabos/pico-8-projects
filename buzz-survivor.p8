@@ -3,20 +3,23 @@ version 35
 __lua__
 wpnclasses={
  {name="net",
+  pickup=50,
   phase=0,len=10,spd=0.02,dmg=1,
   draw=function(s)
    line(
-    p.x,p.y,
+    flr(p.x)+1.5*cos(s.spd*(s.phase-1)),
+    flr(p.y)+3*sin(s.spd*(s.phase-1)),
     p.x+s.len*cos(s.spd*(s.phase-1)),
     p.y+s.len*sin(s.spd*(s.phase-1)),12)
    line(
-    p.x,p.y,
+    flr(p.x)+1.5*cos(s.spd*s.phase),
+    flr(p.y)+3*sin(s.spd*s.phase),
     p.x+s.len*cos(s.spd*s.phase),
     p.y+s.len*sin(s.spd*s.phase),7)
   end,
   update=function(s)
    s.phase+=1
-   s.len=p.level*5
+   s.len=min(90,p.level*5)
    local last=nil
    for i=1,s.len\5 do
     local hx=p.x+5*i*cos(s.spd*s.phase)
@@ -27,15 +30,21 @@ wpnclasses={
      foreach(collisionmap[k],function(e)
       hit(e,s.dmg)
      end)
+     foreach(xps[k],function(e)
+      if rnd(100)<s.pickup then
+       del(xps[k],e)
+       p.xp+=e.value
+      end
+     end)
     end
    end
-  end}
+  end},
 }
 
 function _init()
  p={
-  x=rnd(10000),y=rnd(10000),
-  spr=1,spd=1.5,level=1,xp=0,
+  x=rnd(10000)-5000,y=rnd(10000)-5000,
+  spr=1,spd=1,level=1,xp=0,
   weapons={wpnclasses[1]},
  }
  cam={x=p.x,y=p.y}
@@ -47,16 +56,24 @@ function _init()
   add(enemies,newenemy())
  end
  ts=0
+ biome=2
 end
 
 function setpal(c)
  for i=1,15 do
   pal(i,c or i)
  end
- pal(0,3+128,1)
- pal(1,1+128,1)
- pal(2,1,1)
- pal(3,3,1)
+ if biome==1 then
+  pal(0,3+128,1)
+  pal(1,1+128,1)
+  pal(2,1,1)
+  pal(3,3,1)
+ elseif biome==2 then
+  pal(0,2+128,1)
+  pal(1,0+128,1)
+  pal(2,4+128,1)
+  pal(3,5+128,1)
+ end
  poke(24366,1)--apply to editor
 end
 setpal()
@@ -79,12 +96,17 @@ function _draw()
     cos(0.02*(fy+y))*2^2)%5
    for z=1,d do
     local r=(fx+x)^2+(fy+y)^2+(z+c)^2
-    circfill(
-     x*8-sx+r%11,y*8-sy+r%9,(z-1)%3,c)
+    if biome==1 then
+     circfill(
+      x*8-sx+r%11,y*8-sy+r%9,(z-1)%3,c)
+    elseif biome==2 then
+     circ(
+      x*8-sx+r%11,y*8-sy+r%9,(z-1)%3,c)
+    end
    end
   end
  end
- camera(cam.x-60,cam.y-60)
+ camera(cam.x-64,cam.y-64)
  cam.x*=0.95
  cam.x+=0.05*(p.x+flr(p.vx*20))
  cam.y*=0.95
@@ -107,8 +129,18 @@ function _draw()
  end
  --enemies
  foreach(enemies,function(e)
-  spr(e.spr,e.x-4,e.y-4,1,1,e.flip)
+  if e.hp>0 then
+   spr(e.spr,e.x-4,e.y-4,1,1,e.flip)
+  end
  end)
+ pal(9,1)
+ pal(10,12)
+ foreach(enemies,function(e)
+  if e.hp<=0 then
+   spr(e.spr,e.x-4,e.y-4,1,1,e.flip)
+  end
+ end)
+ setpal()
  --effects
  foreach(effects,function(e)
   e.ttl-=1
@@ -140,6 +172,21 @@ function rprint(txt,x,y,c)
  print(txt,x-#txt*4+4,y,c)
 end
 
+function colliders(
+ list,center,radius,fn)
+ local pk=collisionkey(center,-5)
+ for i=0,1 do for j=0,1 do
+  local cell=list[pk+i+100*j]
+  foreach(cell,function(o)
+   local dx=o.x-center.x
+   local dy=o.y-center.y
+   if abs(dx)+abs(dy)<radius then
+    fn(o,cell)
+   end
+  end)
+ end end
+end
+
 function _update()
  ts+=1
  --player
@@ -168,18 +215,10 @@ function _update()
  p.x+=p.vx
  p.y+=p.vy
  --xp
- local pk=collisionkey(p,-5)
- for i=0,1 do for j=0,1 do
-  local v=xps[pk+i+100*j]
-  foreach(v,function(xp)
-   local dx=xp.x-p.x
-   local dy=xp.y-p.y
-   if abs(dx)+abs(dy)<5 then
-    del(v,xp)
-    p.xp+=xp.value
-   end
-  end)
- end end
+ colliders(xps,p,5,function(xp,cell)
+  del(cell,xp)
+  p.xp+=xp.value
+ end)
  --enemies
  collisionmap={}
  local key=collisionkey
@@ -197,6 +236,10 @@ function _update()
   local dx=p.x-e.x
   local dy=p.y-e.y
   local l=sqrt((dx/10)^2+(dy/10)^2)*10
+  if e.hp<1 then
+   dx*=-2
+   dy*=-2
+  end
   local max_dist=120
   if abs(dx)>max_dist
   or abs(dy)>max_dist then
@@ -213,7 +256,7 @@ function _update()
   end
   e.flip=dx<0
   local k=key(e,-5)
-  for dk1=0,1 do for dk2=0,1 do
+  if e.hp>0 then for dk1=0,1 do for dk2=0,1 do
    for j,e2 in pairs(collision[k+dk1+100*dk2]) do
     if e2!=e then
      local dx=e.x-e2.x
@@ -225,7 +268,7 @@ function _update()
      end
     end
    end
-  end end
+  end end end
  end
  if #enemies<250 and rnd(100)<10 then
   add(enemies,newenemy())
@@ -265,7 +308,6 @@ function hit(e,dmg)
  e.hp-=dmg
  addeffect(e,dmg*2,9)
  if e.hp<=0 then
-  del(enemies,e)
   addxp(e,e.xp)
  end
 end
@@ -301,7 +343,7 @@ function addxp(p,n)
 end
 __gfx__
 000000000000000000000000000000000000000000000000660000660660066000999000000000000000000000000000000000000000000000009a0000000000
-000000000000000000000000000000000000000000000000666006660660066099b9b99077000000770000000000000000000000000000000009789000000000
+00000000000000000000000000000000000000000000000066600666066006609939399077000000770000000000000000000000000000000009789000000000
 007007000004400000000000000000000006000000a9aa000660066008aaaa80999a99909900000077007000000000000000000000000000765a990000000000
 00077000000ff00000000000000600000005990001949400008aa8000aaaaaa099999990999999907777777000000000000000000000000069a5a00000000000
 00077000000cc0000005a0000959590000a599000094990000999900011111109999999099999b9177777b7100000000000000000000000005a5500000000000
