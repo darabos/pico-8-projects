@@ -39,13 +39,54 @@ wpnclasses={
     end
    end
   end},
+
+ {name="trap",
+  lasttime=0,len=5,spd=1,dmg=10,
+  traps={},
+  drawunder=function(s)
+   foreach(s.traps,function(t)
+    local tt=ts-t.ts
+    if tt<0 then
+     circfill(t.x,t.y,2,7)
+     rect(t.x-1,t.y-1,t.x+1,t.y+1,12)
+     if tt>-50 and tt\5%2==1 then
+      pset(t.x,t.y,8)
+     end
+    end
+   end)
+  end,
+  draw=function(s)
+   foreach(s.traps,function(t)
+    local tt=(ts-t.ts)/5
+    if tt>0 then
+     local r=tt^2*s.len
+     circ(t.x,t.y,r-1,12)
+     circ(t.x,t.y,r,7)
+    end
+   end)
+  end,
+  update=function(s)
+   foreach(s.traps,function(t)
+    local tt=ts-t.ts
+    if tt>5 then
+     del(s.traps,t)
+     colliders(collisionmap,t,s.len,function(e,cell)
+      hit(e,s.dmg)
+     end)
+    end
+   end)
+   if ts-s.lasttime>30/s.spd then
+    s.lasttime=ts
+    add(s.traps,{x=p.x,y=p.y,ts=ts+150/s.spd})
+   end
+  end},
 }
 
 function _init()
  p={
   x=rnd(10000)-5000,y=rnd(10000)-5000,
   spr=1,spd=1,level=1,xp=0,
-  weapons={wpnclasses[1]},
+  weapons={wpnclasses[2]},
  }
  cam={x=p.x,y=p.y}
  start_time=t()
@@ -56,7 +97,7 @@ function _init()
   add(enemies,newenemy())
  end
  ts=0
- biome=2
+ biome=1
 end
 
 function setpal(c)
@@ -119,6 +160,12 @@ function _draw()
    pset(v[i].x,v[i].y,12)
   end end
  end end
+ --weapons below
+ foreach(p.weapons,function(w)
+  if w.drawunder then
+   w.drawunder(w)
+  end
+ end)
  --player
  if p.wounded then
   setpal(8)
@@ -175,12 +222,15 @@ end
 function colliders(
  list,center,radius,fn)
  local pk=collisionkey(center,-5)
- for i=0,1 do for j=0,1 do
+ local low=-max(0,(radius+4)\10)
+ local high=max(1,(radius+14)\10)
+ local r2=radius^2
+ for i=low,high do for j=low,high do
   local cell=list[pk+i+100*j]
   foreach(cell,function(o)
    local dx=o.x-center.x
    local dy=o.y-center.y
-   if abs(dx)+abs(dy)<radius then
+   if dx^2+dy^2<r2 then
     fn(o,cell)
    end
   end)
@@ -299,7 +349,7 @@ function newenemy()
  r=rnd()^2
  e.spr=flr(r*9+2)
  e.hp=e.spr^2
- e.xp=e.hp
+ e.xp=e.spr-1
  e.r=e.spr
  return e
 end
@@ -374,3 +424,5 @@ __gfx__
 000000000000000000000000000500000000000008000000000000000000000000000000000000000000000000000000000000000000000049f11f9404444440
 00000000000000000000000000050000000000000b00000000000000000000000000000000000000000000000000000000000000000000004f1111f400000004
 00000000000000000000000000050000000000000c00000000000000000000000000000000000000000000000000000000000000000000009f1ee1f900000000
+__sfx__
+000100002c05000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
