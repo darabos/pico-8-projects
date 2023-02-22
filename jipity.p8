@@ -2,8 +2,13 @@ pico-8 cartridge // http://www.pico-8.com
 version 38
 __lua__
 objs={}
+cam={x=64,y=64}
 debug=""
 function _draw()
+ camera(cam.x-64,cam.y-64)
+ local dx,dy=cam.x-player.instance.x-4,cam.y-player.instance.y-4
+ if (abs(dx)>40) cam.x-=sign(dx)
+ if (abs(dy)>40) cam.y-=sign(dy)
  cls(5)
  palt(0,false)
  map()
@@ -168,6 +173,7 @@ function _init()
 end
 
 function initobj(o)
+ o.type.instance=o
  o.rx=0
  o.ry=0
  o.w=8
