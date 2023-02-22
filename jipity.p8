@@ -64,6 +64,8 @@ function walkdraw(this)
  sprborder(s,this.x,this.y,t\10%2==0)
 end
 
+poke(0x5f2d,1) --enable keyboard
+
 types={}
 player={
  tile=1,
@@ -87,20 +89,32 @@ player={
   if (btn(➡️)) dx+=1
   if (btn(⬆️)) dy-=1
   if (btn(⬇️)) dy+=1
+  if this.typing==nil then
+   --test
+	  if (btnp(❎)) dx+=10
+	 end
   this.move(dx,dy)
   this.walking=dx!=0 or dy!=0
-  if stat(30) then --key pressed
+  while stat(30) do --key pressed
    local k=stat(31) --get code
-   this.typing=this.typing..k
    if k=="p" then
     poke(0x5f30,1) --suppress pause menu
    elseif k=="\r" then --enter
     poke(0x5f30,1) --suppress pause menu
-    poke(0x5f2d,0) --disable keyboard
-    this.typing=nil
+    if this.typing==nil then
+     this.typing=""
+    else
+     this.typing=nil
+    end
+    goto continue
    elseif k=="\8" then --backspace
     this.typing=sub(this.typing,1,#this.typing-2)
+    goto continue
    end
+   if this.typing!=nil then
+    this.typing=this.typing..k
+   end
+   ::continue::
   end
   if btnp(❎) and peek(0x5f2d)==0 then
    poke(0x5f2d,1) --enable keyboard
