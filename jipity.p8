@@ -102,15 +102,46 @@ function getspeech(tile)
 	return says
 end
 
+function tolines(s)
+ local words=split(s," ")
+ local lines={}
+ for i=1,#words do
+  local w=words[i]
+  if #lines==0 or
+   lines[#lines].len+#w>20 then
+   add(lines,{len=0,str=""})
+  end
+  local l=lines[#lines]
+  if l.len!=0 then
+   l.len+=1
+   l.str..=" "
+  end
+  l.len+=#w
+  l.str..=w
+ end
+ return lines
+end
+
 function drawspeech(this,s)
  if (#s==0) s="..."
  for i=1,4 do
   line(this.x,this.y,this.x-6+i,this.y-4,7)
  end
- for i=1,#s do
-  circfill(this.x-#s*2+i*4+2,this.y-8,5,7)
+ local lines=tolines(s)
+ local longest=0
+ for j=1,#lines do
+  local s=lines[j].str
+  if (#s>longest) longest=#s
  end
- print(s,this.x-#s*2+5,this.y-10,0)
+ for j=1,#lines do
+  for i=1,longest do
+   circfill(this.x-longest*2+i*4+2,this.y-8*j,5,7)
+  end
+ end
+ for j=1,#lines do
+  local s=lines[#lines-j+1].str
+  print(s,this.x-longest*2+5,this.y-2-j*8,0)
+ end
 end
 
 function sendspeech(says)

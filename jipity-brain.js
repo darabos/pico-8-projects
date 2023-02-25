@@ -29,11 +29,17 @@ function playerSays(text) {
 }
 
 async function getAction(c) {
-	const res = await fetch('http://localhost:8080/', {
-		method: 'POST',
-		headers: {'Content-Type': 'application/json'},
-		body: JSON.stringify({id: c.id, log: c.log}),
-	});
+	let res;
+	try {
+		res = await fetch('http://localhost:8080/', {
+			method: 'POST',
+			headers: {'Content-Type': 'application/json'},
+			body: JSON.stringify({id: c.id, log: c.log}),
+		});
+	} catch (e) {
+		// Retry backend call.
+		return await getAction(c);
+	}
 	const j = await res.json();
 	if (j.action) {
 		const a = j.action;
@@ -59,6 +65,7 @@ function think() {
 	if (pico8_gpio[50] == 1) {
 		const text = String.fromCharCode.apply(null, pico8_gpio.slice(52, 52 + pico8_gpio[51]));
 		playerSays(text);
+		pico8_gpio[50] = 0;
 	}
 }
 think();

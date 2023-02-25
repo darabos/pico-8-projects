@@ -16,7 +16,8 @@ The foyer to the royal bedroom, where Rodrick stands, is richly decorated with
 colorful tapestries. A few barrels have been recently stacked in the corner.
 Rodrick hopes they will not become a permanent installation.
 
-Note the lack of long sentences.
+Note how short all the sentences are! They needed to fit on a small screen while still
+being entertaining.
 
 Here is a log of events:
 - Jip arrives in the foyer.
@@ -25,12 +26,15 @@ Here is a log of events:
 - Rodrick says "No donkeys here, boy."
 - Jip says "You're the donkey!"
 - Jip leaves the foyer.
-- Rodrick says "I will get you, boy!"
+- Rodrick says "Was that supposed to be funny?"
 - Two hours pass.
 - Jip arrives in the foyer.
     `,
   },
-  {name: 'Zelenda', prefix: ''},
+  {
+    name: 'Zelenda', prefix: `
+    `,
+},
 ];
 
 functions.http('act', async (req, res) => {
@@ -53,7 +57,7 @@ const openai = new openaiLib.OpenAIApi(new openaiLib.Configuration({
 async function getAction(c) {
   console.log(c);
   const ch = characters[c.id];
-  const prompt = characters[1].prefix.trim() + '\n' + c.log.map(a => {
+  const prompt = characters[c.id].prefix.trim() + '\n' + c.log.map(a => {
     const actor = characters[a[0]].name;
     if (a[1] === 'says') {
       return `- ${actor} says "${a[2]}"`;
@@ -61,7 +65,7 @@ async function getAction(c) {
   }).join('\n') + '\n-';
   console.log(prompt);
   const completion = await openai.createCompletion({
-    model: "text-davinci-003", prompt, stop: '\n-', max_tokens: 20 });
+    model: "text-davinci-003", prompt, stop: '\n-', max_tokens: 30 });
   const text = completion.data.choices[0].text.trim();
   const [actor, action, ...tail] = text.split(/ /);
   if (actor === ch.name && action === 'says') {
