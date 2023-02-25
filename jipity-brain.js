@@ -1,9 +1,41 @@
+function clip(text, maxLength) {
+	if (text.length > maxLength) {
+		const sentences = [...text.matchAll(/.*?[.?!]/g)].map(m => m[0]);
+		if (sentences[0].length > maxLength) {
+			const words = [...text.matchAll(/.*? /g)].map(m => m[0]);
+			if (words[0].length > maxLength) {
+				text = text.substring(0, maxLength);
+			} else {
+				text = "";
+				while (words.length && text.length + words[0].length <= maxLength) text += words.shift();
+			}
+		} else {
+			text = "";
+			while (sentences.length && text.length + sentences[0].length < maxLength) text += sentences.shift();
+		}
+	}
+	return text;
+}
+
+function sees(a, b) {
+	const dist = Math.hypot(a.x-b.x, a.y-b.y);
+	return dist < 20;
+}
+
 function say(c, text) {
+	const gpioOffset = 50;
+	text = clip(text, 128-gpioOffset-2);
+	for (const c2 of characters) {
+		if (sees(c2, c)) {
+			c2.log.push([c.id, 'says', text]);
+			c2.thinking = true;
+		}
+	}
 	text = text.toLowerCase();
-	pico8_gpio[50] = c + 1;
-	pico8_gpio[51] = text.length;
+	pico8_gpio[gpioOffset] = c.id + 1;
+	pico8_gpio[gpioOffset + 1] = text.length;
 	for (let i=0; i<text.length; ++i) {
-		pico8_gpio[52+i] = text.charCodeAt(i);
+		pico8_gpio[gpioOffset+2+i] = text.charCodeAt(i);
 	}
 }
 
@@ -16,17 +48,6 @@ for (let i = 0; i < characters.length; ++i) {
 	characters[i].id = i;
 }
 const player = characters[0];
-
-function playerSays(text) {
-	for (const c of characters) {
-		if (c == player) continue;
-		const dist = Math.hypot(c.x-player.x, c.y-player.y);
-		if (dist < 100) {
-			c.log.push([0, 'says', text]);
-			c.thinking = true;
-		}
-	}
-}
 
 async function getAction(c) {
 	let res;
@@ -43,9 +64,8 @@ async function getAction(c) {
 	const j = await res.json();
 	if (j.action) {
 		const a = j.action;
-		c.log.push(a);
 		if (a[1] === 'says') {
-			say(a[0], a[2])
+			say(characters[a[0]], a[2])
 		}
 	}
 	request = undefined;
@@ -57,14 +77,14 @@ function think() {
 	for (const c of characters) {
 		c.x = pico8_gpio[c.id*2+2];
 		c.y = pico8_gpio[c.id*2+3];
-		if (c.thinking && !request) {
+		if (c !== player && c.thinking && !request) {
 			request = getAction(c);
 			c.thinking = false;
 		}
 	}
 	if (pico8_gpio[50] == 1) {
 		const text = String.fromCharCode.apply(null, pico8_gpio.slice(52, 52 + pico8_gpio[51]));
-		playerSays(text);
+		say(player, text);
 		pico8_gpio[50] = 0;
 	}
 }

@@ -17,23 +17,50 @@ colorful tapestries. A few barrels have been recently stacked in the corner.
 Rodrick hopes they will not become a permanent installation.
 
 Note how short all the sentences are! They needed to fit on a small screen while still
-being entertaining.
+being entertaining. The only actions the characters can take is walking somewhere
+or saying something.
 
 Here is a log of events:
-- Jip arrives in the foyer.
+- Jip walks to the foyer.
 - Rodrick says "What are you looking for, Jip?"
 - Jip says "Have you seen a donkey, sir?"
 - Rodrick says "No donkeys here, boy."
 - Jip says "You're the donkey!"
-- Jip leaves the foyer.
+- Jip walks to the garden.
 - Rodrick says "Was that supposed to be funny?"
 - Two hours pass.
-- Jip arrives in the foyer.
+- Jip walks to the foyer.
     `,
   },
   {
     name: 'Zelenda', prefix: `
-    `,
+Zelenda is the king's daughter and princess of the castle. She spends most of her
+days in the Grand Princess Tower, which was originally built for her grandmother.
+She is a rebellious teenager with a nasty streak. Perhaps she is just looking for
+someone who can treat her as an equal.
+
+Jip is the son of the royal chef. He's 9 years old and always up to mischief.
+
+The Grand Princess Tower is full of pretty things. Everything is covered in gold.
+Zelenda just brought in some mud on her shoes from the garden, but the servants
+have already cleaned up the mess.
+
+Note how short all the sentences are! They needed to fit on a small screen while still
+being entertaining. The only actions the characters can take is walking somewhere
+or saying something.
+
+Here is a log of events:
+- Jip walks to the foyer.
+- Zelenda says "What are you looking for, Jip?"
+- Jip says "Have you seen a donkey, miss?"
+- Zelenda says "I see one now."
+- Jip says "You're the donkey!"
+- Zelenda says "Why are you braying then?"
+- Jip walks to the garden.
+- Zelenda says "Go cry to your mom."
+- Two hours pass.
+- Jip walks to the foyer.
+        `,
 },
 ];
 
@@ -67,8 +94,9 @@ async function getAction(c) {
   const completion = await openai.createCompletion({
     model: "text-davinci-003", prompt, stop: '\n-', max_tokens: 30 });
   const text = completion.data.choices[0].text.trim();
+  console.log(text);
   const [actor, action, ...tail] = text.split(/ /);
   if (actor === ch.name && action === 'says') {
-    return [c.id, 'says', tail.join(' ').replace(/"/g, '')];
+    return [c.id, 'says', tail.join(' ').replace(/"/g, '').replace('\n', ' ')];
   }
 }
