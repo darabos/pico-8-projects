@@ -1,3 +1,14 @@
+let rooms, map;
+function parseSource() {
+	const s = jipitySource;
+	rooms = Object.fromEntries(
+		[...s.match(/rooms=\{(.*?)\n\}/s)[1].matchAll(/(.*)=\{(.*)\}/g)]
+		.map(m => [m[1].trim(), m[2].split(/,/).map(e => parseInt(e))]));
+	const gfxStr = s.match(/__gfx__(.*?)__/s)[1].split(/\n/);
+	const mapStr = s.match(/__map__(.*?)__/s)[1].split(/\n/);
+}
+parseSource();
+
 function clip(text, maxLength) {
 	if (text.length > maxLength) {
 		const sentences = [...text.matchAll(/.*?[.?!]/g)].map(m => m[0]);
@@ -19,7 +30,7 @@ function clip(text, maxLength) {
 
 function sees(a, b) {
 	const dist = Math.hypot(a.x-b.x, a.y-b.y);
-	return dist < 20;
+	return dist < 5;
 }
 
 function say(c, text) {
@@ -39,13 +50,10 @@ function say(c, text) {
 	}
 }
 
-const characters = [
-	{ log: [] },
-	{ log: [] },
-	{ log: [] },
-];
-for (let i = 0; i < characters.length; ++i) {
-	characters[i].id = i;
+const characters = [];
+for (let i = 0; i < 10; ++i) {
+	characters.push({ log: [] });
+	characters[i].id = i; // Backend ID. PICO-8 IDs are +1.
 }
 const player = characters[0];
 

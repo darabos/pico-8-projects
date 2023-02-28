@@ -62,6 +62,30 @@ Here is a log of events:
 - Jip walks to the foyer.
         `,
 },
+{ name: 'Queen' },
+{ name: 'King' },
+{ name: 'Chancellor' },
+{
+  name: 'Ducky', prefix: `
+Jip is the son of the royal chef. He's 9 years old and always up to mischief.
+
+Ducky is Jip's pet duck. Ducky likes to follow Jip around and quack a word now and then for comedic effect.
+
+The only actions the characters can take is walking somewhere or saying something.
+
+Here is a log of events:
+- Jip walks to the stables.
+- Jip says "Have you seen a donkey, Ducky?"
+- Ducky says "Quack?"
+- Jip says "Are you a donkey?"
+- Ducky says "Duck!"
+- Jip says "No luck then."
+- Ducky says "Luck!"
+- Jip walks to the gardens.
+- Two hours pass.
+- Jip walks to the stables.
+      `,
+},
 ];
 
 functions.http('act', async (req, res) => {
