@@ -158,9 +158,13 @@ function drawbubble(this,s)
    circfill(this.x-longest*2+i*4+2,this.y-8*j,5,7)
   end
  end
+ local c=0
+ if s[1] == "*" and s[#s] == "*" then
+  c=12
+ end
  for j=1,#lines do
   local s=lines[#lines-j+1].str
-  print(s,this.x-longest*2+5,this.y-2-j*8,0)
+  print(s,this.x-longest*2+5,this.y-2-j*8,c)
  end
 end
 

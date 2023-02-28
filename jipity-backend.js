@@ -88,6 +88,8 @@ Here is a log of events:
 },
 ];
 
+for (let i = 0; i < characters.length; ++i) characters[i].id = i;
+
 functions.http('act', async (req, res) => {
   res.set('Access-Control-Allow-Origin', "*");
   res.set('Access-Control-Allow-Methods', 'POST');
@@ -119,8 +121,20 @@ async function getAction(c) {
     model: "text-davinci-003", prompt, stop: '\n-', max_tokens: 30 });
   const text = completion.data.choices[0].text.trim();
   console.log(text);
-  const [actor, action, ...tail] = text.split(/ /);
-  if (actor === ch.name && action === 'says') {
-    return [c.id, 'says', tail.join(' ').replace(/"/g, '').replace('\n', ' ')];
+  return parseAction(ch, text);
+}
+
+function parseAction(ch, text) {
+  const firstSpace = text.indexOf(' ');
+  if (firstSpace < 0) return;
+  const actor = text.slice(0, firstSpace);
+  if (actor !== ch.name) return;
+  const action = text.slice(firstSpace).trim();
+  if (action.startsWith('says')) {
+    const m = action.match(/".*?"/);
+    if (!m) return;
+    return [ch.id, 'says', m[0].replace(/"/g, '').replace(/\n/, ' ')];
+  } else {
+    return [ch.id, 'says', '*' + action.replace(/\.$/, '') + '*'];
   }
 }
