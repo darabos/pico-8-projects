@@ -62,9 +62,9 @@ Here is a log of events:
 - Jip walks to the foyer.
         `,
 },
-{ name: 'Queen' },
-{ name: 'King' },
-{ name: 'Chancellor' },
+{ name: 'Queen', prefix: '' },
+{ name: 'King', prefix: '' },
+{ name: 'Chancellor', prefix: '' },
 {
   name: 'Ducky', prefix: `
 Jip is the son of the royal chef. He's 9 years old and always up to mischief.
@@ -110,10 +110,18 @@ const openai = new openaiLib.OpenAIApi(new openaiLib.Configuration({
 async function getAction(c) {
   console.log(c);
   const ch = characters[c.id];
+  if (!ch) return;
   const prompt = characters[c.id].prefix.trim() + '\n' + c.log.map(a => {
-    const actor = characters[a[0]].name;
+    const actor = characters[a[0]];
+    if (!actor) return '';
     if (a[1] === 'says') {
-      return `- ${actor} says "${a[2]}"`;
+      const m = a[2].match(/^[*](.*)[*]$/);
+      if (m) return `- ${actor.name} ${m[1]}`;
+      return `- ${actor.name} says "${a[2]}"`;
+    } else if (a[1] === 'arrives') {
+      return `- ${actor.name} arrives.`;
+    } else if (a[1] === 'leaves') {
+      return `- ${actor.name} leaves.`;
     }
   }).join('\n') + '\n-';
   console.log(prompt);

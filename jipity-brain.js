@@ -52,8 +52,11 @@ function say(c, text) {
 
 const characters = [];
 for (let i = 0; i < 10; ++i) {
-	characters.push({ log: [] });
-	characters[i].id = i; // Backend ID. PICO-8 IDs are +1.
+	characters.push({
+		id: i, // Backend ID. PICO-8 IDs are +1.
+		log: [],
+		sees: {},
+  });
 }
 const player = characters[0];
 
@@ -79,6 +82,29 @@ async function getAction(c) {
 	request = undefined;
 }
 
+function updateSight() {
+	for (const a of characters) {
+		for (const b of characters) {
+			if (a === b) continue;
+			if ([a.x, a.y, b.x, b.y].includes(undefined)) continue;
+			const see = sees(a, b);
+			if (see != a.sees[b.id]) {
+				if (a.sees[b.id] !== undefined) {
+					a.log.push([b.id, see ? 'arrives' : 'leaves']);
+					a.thinking = true;
+				}
+				a.sees[b.id] = see;
+				if (b.sees[a.id] !== undefined) {
+					b.log.push([a.id, see ? 'arrives' : 'leaves']);
+					b.thinking = true;
+				}
+				b.sees[a.id] = see;
+			}
+		}
+	}
+}
+
+
 let request;
 function think() {
 	setTimeout(think, 1000);
@@ -90,6 +116,7 @@ function think() {
 			c.thinking = false;
 		}
 	}
+	updateSight();
 	if (pico8_gpio[50] == 1) {
 		const text = String.fromCharCode.apply(null, pico8_gpio.slice(52, 52 + pico8_gpio[51]));
 		say(player, text);
