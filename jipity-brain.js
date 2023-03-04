@@ -4,10 +4,38 @@ function parseSource() {
 	rooms = Object.fromEntries(
 		[...s.match(/rooms=\{(.*?)\n\}/s)[1].matchAll(/(.*)=\{(.*)\}/g)]
 		.map(m => [m[1].trim(), m[2].split(/,/).map(e => parseInt(e))]));
+	const gffStr = s.match(/__gff__(.*?)__/s)[1].trim().split(/\n/).join('');
 	const gfxStr = s.match(/__gfx__(.*?)__/s)[1].trim().split(/\n/);
-	map = s.match(/__map__(.*?)__/s)[1].trim().split(/\n/);
+	const mapStr = s.match(/__map__(.*?)__/s)[1].trim().split(/\n/);
+	map = [];
+	// Parse tiles from map.
+	for (const r of mapStr) {
+		const rr = [];
+		for (let j = 0; j < r.length; j += 2) {
+			rr.push(parseInt(r.slice(j, j + 2), 16));
+		}
+		map.push(rr);
+	}
+	// Parse tiles from bottom sprite sheets.
 	for (let i = 64; i < gfxStr.length; i += 2) {
-		map.push(gfxStr[i] + gfxStr[i+1]);
+		const rr = [];
+		for (let z = 0; z < 2; ++z) {
+			const r = gfxStr[i + z] || '';
+			for (let j = 0; j < r.length; j += 2) {
+				rr.push(parseInt(r[j+1] + r[j], 16));
+			}
+		}
+		map.push(rr);
+	}
+	const collision = [];
+	for (let i = 0; i < gffStr.length / 2; ++i) {
+		const flag2 = parseInt(gffStr[i*2+1]);
+		collision[i] = (i >= 32 && flag2 & 1) ? 1 : 0;
+	}
+	// Resolve tiles according to flags.
+	for (let i = 0; i < 128; ++i) {
+		const r = map[i] || [];
+		map[i] = r.map(t => collision[t] ?? t);
 	}
 }
 parseSource();
