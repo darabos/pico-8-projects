@@ -1,3 +1,6 @@
+import jipitySource from './jipity-data.js';
+import TinyQueue from 'https://unpkg.com/tinyqueue@2.0.0/index.js';
+const BACKEND = 'http://localhost:8080/';
 let rooms, map;
 function parseSource() {
 	const s = jipitySource;
@@ -35,7 +38,7 @@ function parseSource() {
 	// Resolve tiles according to flags.
 	for (let i = 0; i < 128; ++i) {
 		const r = map[i] || [];
-		map[i] = r.map(t => collision[t] ?? t);
+		map[i] = r.map(t => 1 - collision[t] ?? t);
 	}
 }
 parseSource();
@@ -92,12 +95,12 @@ for (let i = 0; i < 10; ++i) {
   });
 }
 const player = characters[0];
-characters[2].destination = 'kitchen';
+characters[1].destination = 'kitchen';
 
 async function getAction(c) {
 	let res;
 	try {
-		res = await fetch('http://localhost:8080/', {
+		res = await fetch(BACKEND, {
 			method: 'POST',
 			headers: {'Content-Type': 'application/json'},
 			body: JSON.stringify({id: c.id, log: c.log}),
@@ -146,15 +149,61 @@ function getRoom(c) {
 	}
 }
 
+function findPath(character, start, destination) {
+	function d(p) {
+		return Math.max(Math.abs(p.x - destination.x), Math.abs(p.y - destination.y));
+	}
+	function free(p) {
+		return map[p.y]?.[p.x] && characters.filter(
+			c => c !== character && Math.abs(c.x - p.x) + Math.abs(c.y - p.y) < 2).length === 0;
+	}
+	const v = new Set();
+	function visited(p) {
+		const k = p.x*1000 + p.y;
+		if (v.has(k)) return true;
+		v.add(k);
+		return false;
+	}
+	function done(p) {
+		return p.dist < 2;
+	}
+	start = {x: start.x, y: start.y, cost: 0};
+	start.dist = d(start);
+	if (done(start)) return start;
+	const q = new TinyQueue([start], (a, b) => a.cost + a.dist - b.cost - b.dist);
+	while (q.length) {
+		let p = q.pop();
+		if (done(p)) {
+			while (p.parent !== start) {
+				p = p.parent;
+			}
+			return p;
+		}
+		for (let dx = -1; dx <= 1; ++dx) for (let dy = -1; dy <= 1; ++dy) {
+			if (dx === 0 && dy === 0) continue;
+			const n = {x: p.x+dx, y: p.y+dy, cost: p.cost+1, parent: p};
+			if (!visited(n) && free(n)) {
+				n.dist = d(n);
+				q.push(n);
+			}
+		}
+	}
+	console.log('could not find a path', {start, destination, map: map.map((r, i) =>
+		r.map((e, j) => e ? v.has(j*1000+i) ? 'v' : ' ' : 'X').join('')
+	)});
+	return start;
+}
+
 function getDirection(c) {
-	if (!c.destination || c.destination === c.room) return 0;
-	const r = rooms[c.destination]
-	const rx = (r[0] + r[2]) / 2;
-	const ry = (r[1] + r[3]) / 2;
-	if (rx < c.x && ry < c.y) return 1;
-	if (rx < c.x && ry >= c.y) return 2;
-	if (rx >= c.x && ry < c.y) return 3;
-	if (rx >= c.x && ry >= c.y) return 4;
+	if (!c.destination || c.x === undefined) return 0;
+	const r = rooms[c.destination];
+	const dest = {x: Math.floor((r[0] + r[2]) / 2), y: Math.floor((r[1] + r[3]) / 2)};
+	const step = findPath(c, c, dest);
+	if (step.x === c.x && step.y === c.y) return 0;
+	if (step.x <= c.x && step.y <= c.y) return 1;
+	if (step.x <= c.x && step.y > c.y) return 2;
+	if (step.x > c.x && step.y <= c.y) return 3;
+	if (step.x > c.x && step.y > c.y) return 4;
 }
 
 function sendDirections(directions) {
@@ -170,7 +219,7 @@ function sendDirections(directions) {
 
 let request;
 function think() {
-	setTimeout(think, 1000);
+	setTimeout(think, 100);
 	let directions = {};
 	for (const c of characters) {
 		c.x = pico8_gpio[c.id*2+2];

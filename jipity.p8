@@ -258,10 +258,11 @@ function npcupdate(this)
   g\=5
  end
  g=g%5
- if (g==1) this.move(-1,-1)
- if (g==2) this.move(-1,1)
- if (g==3) this.move(1,-1)
- if (g==4) this.move(1,1)
+ s=0.5
+ if (g==1) this.move(-s,-s)
+ if (g==2) this.move(-s,s)
+ if (g==3) this.move(s,-s)
+ if (g==4) this.move(s,s)
 end
 
 for i=2,9 do
