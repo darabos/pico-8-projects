@@ -151,10 +151,10 @@ function getDirection(c) {
 	const r = rooms[c.destination]
 	const rx = (r[0] + r[2]) / 2;
 	const ry = (r[1] + r[3]) / 2;
-	if (rx < c.x) return 1;
-	if (rx > c.x) return 2;
-	if (ry < c.y) return 3;
-	if (ry > c.y) return 4;
+	if (rx < c.x && ry < c.y) return 1;
+	if (rx < c.x && ry >= c.y) return 2;
+	if (rx >= c.x && ry < c.y) return 3;
+	if (rx >= c.x && ry >= c.y) return 4;
 }
 
 function sendDirections(directions) {
