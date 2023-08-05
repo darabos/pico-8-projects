@@ -3,8 +3,8 @@
 A repo for our (me and my kids) [PICO-8](https://www.lexaloffle.com/pico-8.php) creations.
 
 Finished games:
-- **lynxkite.p8**: Puzzle game for recruiting at my workplace.
-- **purrwood.p8**: Our entry for [Sylvie's Jam #1](https://itch.io/jam/sylvies-jam-1). A cat in a sailboat.
+- **lynxkite.p8**: Puzzle game for recruiting at my workplace. [Play](https://darabos.itch.io/lynxkite-the-interview)
+- **purrwood.p8**: Our entry for [Sylvie's Jam #1](https://itch.io/jam/sylvies-jam-1). A cat in a sailboat. [Play](https://darabos.itch.io/purrwood)
 
 More serious but not finished yet:
 - **buzz-survivor.p8**: Vampire Survivors-like, but with bees.
