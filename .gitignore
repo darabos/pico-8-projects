@@ -1,0 +1,4 @@
+node_modules
+# These are exported from the p8 file.
+/jipity.js
+/jipity.html
