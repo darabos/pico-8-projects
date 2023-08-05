@@ -5,6 +5,9 @@ wpnclasses={
  {name="net",
   pickup=50,
   phase=0,len=10,spd=0.02,dmg=1,
+  upgrades={
+   {text="swing a \fcnet\f7 around."},
+  },
   draw=function(s)
    line(
     flr(p.x)+1.5*cos(s.spd*(s.phase-1)),
@@ -42,6 +45,9 @@ wpnclasses={
 
  {name="trap",
   lasttime=0,len=5,spd=1,dmg=10,
+  upgrades={
+   {text="lays \fatraps\f7 on the ground."},
+  },
   traps={},
   drawunder=function(s)
    foreach(s.traps,function(t)
@@ -123,7 +129,7 @@ function _init()
    end
   end
   if t.spr==67 then
-   t.text="lays \fatraps\f7 on the ground."
+   t.weapon="trap"
   elseif t.spr==68 then
    t.text="increases the power of\nall weapons."
   elseif t.spr==69 then
@@ -133,7 +139,7 @@ function _init()
   elseif t.spr==71 then
    t.text="extends the range of\nall weapons."
   elseif t.spr==72 then
-   t.text="swing a \fcnet\f7 around."
+   t.weapon="net"
   elseif t.spr==73 then
    t.text="a \f8bear\f7 joins you."
   end
@@ -366,7 +372,17 @@ function drawlevelup()
   spr(t.spr,x+4,y+4)
  end end
  --text
- print(techtree[fire.i+10*fire.j].text,10,114,7)
+ local tt=techtree[fire.i+10*fire.j]
+ if tt.text then
+  print(tt.text,10,114,7)
+ else
+  for i=1,#wpnclasses do
+   local w=wpnclasses[i]
+   if w.name==tt.weapon then
+    print(w.upgrades[1].text,10,114,7)
+   end
+  end
+ end
  rprint(p.level,120,5,7)
 end
 
