@@ -1,0 +1,670 @@
+pico-8 cartridge // http://www.pico-8.com
+version 35
+__lua__
+wpnclasses={
+ {name="net",
+  pickup=50,
+  phase=0,len=10,spd=0.02,dmg=1,
+  upgrades={
+   {text="swing a \fcnet\f7 around."},
+  },
+  draw=function(s)
+   line(
+    flr(p.x)+1.5*cos(s.spd*(s.phase-1)),
+    flr(p.y)+3*sin(s.spd*(s.phase-1)),
+    p.x+s.len*cos(s.spd*(s.phase-1)),
+    p.y+s.len*sin(s.spd*(s.phase-1)),12)
+   line(
+    flr(p.x)+1.5*cos(s.spd*s.phase),
+    flr(p.y)+3*sin(s.spd*s.phase),
+    p.x+s.len*cos(s.spd*s.phase),
+    p.y+s.len*sin(s.spd*s.phase),7)
+  end,
+  update=function(s)
+   s.phase+=1
+   s.len=min(90,p.level*5)
+   local last=nil
+   for i=1,s.len\5 do
+    local hx=p.x+5*i*cos(s.spd*s.phase)
+    local hy=p.y+5*i*sin(s.spd*s.phase)
+    local k=collisionkey({x=hx,y=hy},0)
+    if k!=last then
+     last=k
+     foreach(collisionmap[k],function(e)
+      hit(e,s.dmg)
+     end)
+     foreach(xps[k],function(e)
+      if rnd(100)<s.pickup then
+       del(xps[k],e)
+       p.xp+=e.value
+      end
+     end)
+    end
+   end
+  end},
+
+ {name="trap",
+  lasttime=0,len=5,spd=1,dmg=10,
+  upgrades={
+   {text="lays \fatraps\f7 on the ground."},
+  },
+  traps={},
+  drawunder=function(s)
+   foreach(s.traps,function(t)
+    local tt=ts-t.ts
+    if tt<0 then
+     circfill(t.x,t.y,2,7)
+     rect(t.x-1,t.y-1,t.x+1,t.y+1,12)
+     if tt>-50 and tt\5%2==1 then
+      pset(t.x,t.y,8)
+     end
+    end
+   end)
+  end,
+  draw=function(s)
+   foreach(s.traps,function(t)
+    local tt=(ts-t.ts)/5
+    if tt>0 then
+     local r=tt^2*s.len
+     circ(t.x,t.y,r-1,12)
+     circ(t.x,t.y,r,7)
+    end
+   end)
+  end,
+  update=function(s)
+   foreach(s.traps,function(t)
+    local tt=ts-t.ts
+    if tt>5 then
+     del(s.traps,t)
+     colliders(collisionmap,t,s.len,function(e,cell)
+      hit(e,s.dmg)
+     end)
+    end
+   end)
+   if ts-s.lasttime>30/s.spd then
+    s.lasttime=ts
+    add(s.traps,{x=p.x,y=p.y,ts=ts+150/s.spd})
+   end
+  end},
+}
+
+function _init()
+ p={
+  x=rnd(10000)-5000,y=rnd(10000)-5000,
+  vx=0,vy=0,
+  spr=1,spd=1,level=1,xp=0,
+  weapons={},
+ }
+ cam={x=p.x,y=p.y}
+ gameframes=0
+ effects={}
+ enemies={}
+ xps={}
+ for i=1,10 do
+  add(enemies,newenemy())
+ end
+ ts=0
+ biome=1
+ screen="levelup"
+ fire={i=3,j=4}
+ for i=1,16 do
+  add(fire,{x=fire.i*20-3.5,y=fire.j*16-1.5})
+ end
+ p.character="boy"
+ if p.character=="boy" then
+  p.spr=1
+  add(p.weapons,wpnclasses[1])
+ end
+ techtree={}
+ for i=1,5 do for j=1,7 do
+  local t={
+   i=i,j=j,
+   spr=67+flr(rnd(7)),
+   cright=i<5 and rnd(100)<50,
+   cdown=j<7 and rnd(100)<50,
+  }
+  if i==3 and j==4 then
+   if p.character=="boy" then
+    t.spr=72
+   end
+  end
+  if t.spr==67 then
+   t.weapon="trap"
+  elseif t.spr==68 then
+   t.text="increases the power of\nall weapons."
+  elseif t.spr==69 then
+   t.text="your weapons can pick up\n\fahoney\f7."
+  elseif t.spr==70 then
+   t.text="makes all weapons faster."
+  elseif t.spr==71 then
+   t.text="extends the range of\nall weapons."
+  elseif t.spr==72 then
+   t.weapon="net"
+  elseif t.spr==73 then
+   t.text="a \f8bear\f7 joins you."
+  end
+  techtree[i+10*j]=t
+ end end
+ techtree[43].bought=true
+ for i=1,3 do
+  connectstep(techtree)
+ end
+end
+
+--connects almost-connected nodes
+function connectstep(tt)
+ local c={[43]=true}
+ local todo={43}
+ while #todo>0 do
+  local n=todo[1]
+  del(todo,n)
+  if tt[n].cright and not c[n+1] then
+   c[n+1]=true
+   add(todo,n+1)
+  end
+  if tt[n].cdown and not c[n+10] then
+   c[n+10]=true
+   add(todo,n+10)
+  end
+  if n%10>1 and tt[n-1].cright and not c[n-1] then
+   c[n-1]=true
+   add(todo,n-1)
+  end
+  if n\10>1 and tt[n-10].cdown and not c[n-10] then
+   c[n-10]=true
+   add(todo,n-10)
+  end
+ end
+ for i=1,5 do for j=1,7 do
+  local n=i+10*j
+  if not c[n] then
+   if c[n+1] then
+    tt[n].cright=true
+   elseif c[n+10] then
+    tt[n].cdown=true
+   elseif c[n-1] then
+    tt[n-1].cright=true
+   elseif c[n-10] then
+    tt[n-10].cdown=true
+   end
+  end
+ end end
+end
+
+function setpal(c)
+ for i=1,15 do
+  pal(i,c or i)
+ end
+ pal(8,8+128,1)
+ if biome==1 then
+  pal(0,3+128,1)
+  pal(1,1+128,1)
+  pal(2,1,1)
+  pal(3,3,1)
+ elseif biome==2 then
+  pal(0,2+128,1)
+  pal(1,0+128,1)
+  pal(2,4+128,1)
+  pal(3,5+128,1)
+ end
+ poke(24366,1)--apply to editor
+end
+setpal()
+
+function _draw()
+ camera()
+ setpal()
+ if screen=="levelup" then
+  drawlevelup()
+  return
+ end
+ --terrain
+ local sx=cam.x%8
+ local fx=cam.x\8
+ local sy=cam.y%8
+ local fy=cam.y\8
+ cls(0)
+ for x=-1,16 do
+  for y=-1,16 do
+   local c=flr(
+    sin(0.03*(fx+x))*2^2+
+    cos(0.04*(fy+y))*2^2)%3+1
+   local d=flr(
+    sin(0.015*(fx+x))*2^2+
+    cos(0.02*(fy+y))*2^2)%5
+   for z=1,d do
+    local r=(fx+x)^2+(fy+y)^2+(z+c)^2
+    if biome==1 then
+     circfill(
+      x*8-sx+r%11,y*8-sy+r%9,(z-1)%3,c)
+    elseif biome==2 then
+     circ(
+      x*8-sx+r%11,y*8-sy+r%9,(z-1)%3,c)
+    end
+   end
+  end
+ end
+ camera(cam.x-64,cam.y-64)
+ cam.x*=0.95
+ cam.x+=0.05*(p.x+flr(p.vx*20))
+ cam.y*=0.95
+ cam.y+=0.05*(p.y+flr(p.vy*20))
+ --xp
+ local ck=collisionkey(cam,0)
+ for i=-6,7 do for j=-6,7 do
+  local v=xps[ck+i+100*j]
+  if v then for i=1,#v do
+   pset(v[i].x,v[i].y,12)
+  end end
+ end end
+ --weapons below
+ foreach(p.weapons,function(w)
+  if w.drawunder then
+   w.drawunder(w)
+  end
+ end)
+ --player
+ if p.wounded then
+  setpal(8)
+  spr(p.spr,p.x-4,p.y-4,1,1,p.flip)
+  setpal()
+ else
+  spr(p.spr,p.x-4,p.y-4,1,1,p.flip)
+ end
+ --enemies
+ foreach(enemies,function(e)
+  if e.hp>0 then
+   spr(e.spr,e.x-4,e.y-4,1,1,e.flip)
+  end
+ end)
+ pal(9,1)
+ pal(10,12)
+ foreach(enemies,function(e)
+  if e.hp<=0 then
+   spr(e.spr,e.x-4,e.y-4,1,1,e.flip)
+  end
+ end)
+ --effects
+ foreach(effects,function(e)
+  e.ttl-=1
+  if e.ttl<0 then del(effects,e) return end
+  e.x+=e.vx
+  e.y+=e.vy
+  pset(e.x,e.y,e.c)
+ end)
+ --weapons
+ foreach(p.weapons,function(w)
+  w.draw(w)
+ end)
+ --gui
+ camera()
+ local tt=gameframes\30
+ print(--clock
+  (tt\600==0and"0"or"")
+  ..tostr(tt\60)
+  ..(tt%60\10==0and":0"or":")
+  ..tostr(tt%60),1,1,15)
+ rectfill(
+  24,1,
+  24+87*min(1,p.xp/p.nextlevelxp),5,12)
+ rprint(p.level,124,1,15)
+end
+
+function drawlevelup()
+ --background
+ cls(1)
+ for i=0,15 do for j=0,9 do
+  spr(81-j%2,j*16,i*8,1,1,j%2==0,i%2==0)
+  spr(80+j%2,8+j*16,i*8,1,1,j%2==0,i%2==0)
+  rect(1,1,126,126,2)
+ end end
+ --fire
+ local ly=flr(fire[16].y+1)
+ for i=0,15 do
+  local ny=flr(fire[16-i].y-i)
+  sspr(
+   ts\3%8*16,
+   8*8-i,
+   16,1,
+   fire[16-i].x,ny,
+   16,ly-ny,2,2)
+  ly=ny
+ end
+ --connections
+ function ppal(active)
+  if active then
+   pal(4,4)
+   pal(9,9)
+   pal(10,10)
+  else
+   pal(4,5)
+   pal(9,6)
+   pal(10,7)
+  end
+ end
+ for i=1,5 do for j=1,7 do
+  local t=techtree[i+10*j]
+  local x=i*20-4
+  local y=j*16-15
+  if t.cright then
+   ppal(t.bought or techtree[i+1+10*j].bought)
+   spr(64,x+10,y+4)
+   spr(64,x+18,y+4,1,1,true)
+  end
+  if t.cdown then
+   ppal(t.bought or techtree[i+10+10*j].bought)
+   spr(65,x+4,y+12)
+  end
+ end end
+ --panels
+ for i=1,5 do for j=1,7 do
+  local t=techtree[i+10*j]
+  local x=i*20-4
+  local y=j*16-15
+  ppal(t.bought)
+  if fire.i==i and fire.j==j then
+   pal(4,8)
+  end
+  spr(66,x,y)
+  spr(82,x,y+8)
+  spr(66,x+8,y,1,1,true)
+  spr(82,x+8,y+8,1,1,true)
+  spr(t.spr,x+4,y+4)
+ end end
+ --text
+ local tt=techtree[fire.i+10*fire.j]
+ if tt.text then
+  print(tt.text,10,114,7)
+ else
+  for i=1,#wpnclasses do
+   local w=wpnclasses[i]
+   if w.name==tt.weapon then
+    print(w.upgrades[1].text,10,114,7)
+   end
+  end
+ end
+ rprint(p.level,120,5,7)
+end
+
+function rprint(txt,x,y,c)
+ txt=tostr(txt)
+ print(txt,x-#txt*4+4,y,c)
+end
+
+function colliders(
+ list,center,radius,fn)
+ local pk=collisionkey(center,-5)
+ local low=-max(0,(radius+4)\10)
+ local high=max(1,(radius+14)\10)
+ local r2=radius^2
+ for i=low,high do for j=low,high do
+  local cell=list[pk+i+100*j]
+  foreach(cell,function(o)
+   local dx=o.x-center.x
+   local dy=o.y-center.y
+   if dx^2+dy^2<r2 then
+    fn(o,cell)
+   end
+  end)
+ end end
+end
+
+function updatelevelup()
+ if btnp(⬅️) then fire.i-=1 end
+ if btnp(➡️) then fire.i+=1 end
+ if btnp(⬆️) then fire.j-=1 end
+ if btnp(⬇️) then fire.j+=1 end
+ fire.i=mid(1,fire.i,5)
+ fire.j=mid(1,fire.j,7)
+ fire[16].x=fire.i*20-3.5
+ fire[16].y=fire.j*16-1.5
+ for i=-15,-1 do
+  fire[-i].x=0.4*fire[-i].x+0.6*fire[1-i].x
+  fire[-i].y=0.4*fire[-i].y+0.6*fire[1-i].y
+ end
+ local fn=fire.i+10*fire.j
+ local t=techtree[fn]
+ if btnp(❎)
+  and not t.bought
+  and (t.cright and techtree[fn+1].bought
+   or t.cdown and techtree[fn+10].bought
+   or fn%10>1 and techtree[fn-1].cright and techtree[fn-1].bought
+   or fn\10>1 and techtree[fn-10].cdown and techtree[fn-10].bought)
+  then
+  t.bought=true
+  sfx(0)
+ end
+ if btnp(🅾️) then
+  screen="game"
+ end
+end
+
+function _update()
+ ts+=1
+ --player
+ p.nextlevelxp=10*p.level^2
+ if p.xp>=p.nextlevelxp then
+  p.xp-=p.nextlevelxp
+  p.level+=1
+  p.nextlevelxp=10*p.level^2
+ end
+ if screen=="levelup" then
+  updatelevelup()
+  return
+ end
+ gameframes+=1
+ p.wounded=false
+ p.vx=0 p.vy=0
+ if btn(⬅️) then
+  p.vx=-p.spd
+  p.flip=false
+ end
+ if btn(➡️) then
+  p.vx=p.spd
+  p.flip=true
+ end
+ if btn(⬆️) then p.vy=-p.spd end
+ if btn(⬇️) then p.vy=p.spd end
+ if abs(p.vx)+abs(p.vy)>p.spd then
+  p.vx*=0.7
+  p.vy*=0.7
+ end
+ p.x+=p.vx
+ p.y+=p.vy
+ --xp
+ colliders(xps,p,5,function(xp,cell)
+  del(cell,xp)
+  p.xp+=xp.value
+ end)
+ --enemies
+ collisionmap={}
+ local key=collisionkey
+ local collision=collisionmap
+ for i,e in pairs(enemies) do
+  local k=key(e,0)
+  if collision[k] then
+   add(collision[k],e)
+  else
+   collision[k]={e}
+  end
+ end
+ for i,e in pairs(enemies) do
+  local spd=1/2
+  local dx=p.x-e.x
+  local dy=p.y-e.y
+  local l=sqrt((dx/10)^2+(dy/10)^2)*10
+  if e.hp<1 then
+   dx*=-2
+   dy*=-2
+  end
+  local max_dist=120
+  if abs(dx)>max_dist
+  or abs(dy)>max_dist then
+   del(enemies,e)
+  end
+  if l<e.r then
+   p.wounded=e.x
+  end
+  if abs(dx)>2 then
+   e.x+=dx*spd/l
+  end
+  if abs(dy)>2 then
+   e.y+=dy*spd/l
+  end
+  e.flip=dx<0
+  local k=key(e,-5)
+  if e.hp>0 then for dk1=0,1 do for dk2=0,1 do
+   for j,e2 in pairs(collision[k+dk1+100*dk2]) do
+    if e2!=e then
+     local dx=e.x-e2.x
+     local dy=e.y-e2.y
+     local l=abs(dx)+abs(dy)
+     if l<e.r+e2.r+5 then
+      e.x+=sgn(dx)*spd
+      e.y+=sgn(dy)*spd
+     end
+    end
+   end
+  end end end
+ end
+ if #enemies<250 and rnd(100)<10 then
+  add(enemies,newenemy())
+ end
+ --weapons
+ foreach(p.weapons,function(w)
+  w.update(w)
+ end)
+ if btnp(🅾️) then
+  screen="levelup"
+ end
+end
+
+function collisionkey(e,o)
+ return (e.x+o)\10+(e.y+o)\10*100
+end
+
+function spawnpos()
+ local x,y=0,0
+ local excl,incl=60,90
+ while abs(x)<excl and abs(y)<excl do
+  x=rnd(incl*2)-incl
+  y=rnd(incl*2)-incl
+ end
+ return p.x+x,p.y+y
+end
+
+function newenemy()
+ local x,y=spawnpos()
+ local e={x=x,y=y,hp=1,xp=1}
+ r=rnd()^2
+ e.spr=flr(r*9+2)
+ e.hp=e.spr^2
+ e.xp=e.spr-1
+ e.r=e.spr
+ return e
+end
+
+function hit(e,dmg)
+ e.hp-=dmg
+ addeffect(e,dmg*2,9)
+ if e.hp<=0 then
+  addxp(e,e.xp)
+ end
+end
+
+function addeffect(p,n,c)
+ if #effects>250 then return end
+ for i=1,n do
+  local ph=rnd()
+  local s=rnd()+1
+  add(effects,{
+   c=c,x=p.x,y=p.y,ttl=rnd(5)+5,
+   vx=s*cos(ph),vy=s*sin(ph)})
+ end
+end
+
+function addxp(p,n)
+ for i=0,n-1 do
+  local xp={
+   value=1,
+   x=p.x+rnd(i*2)-i,
+   y=p.y+rnd(i*2)-i}
+  local k=collisionkey(xp,0)
+  if xps[k] then
+   if #xps[k]<20 then
+    add(xps[k],xp)
+   else
+    xps[k][flr(rnd(20)+1)].value+=1
+   end
+  else
+   xps[k]={xp}
+  end
+ end
+end
+__gfx__
+000000000000000000000000000000000000000000000000660000660660066000999000000000000000000000000000000000000000000000009a0000000000
+00000000000000000000000000000000000000000000000066600666066006609939399077000000770000000000000000000000000000000009789000000000
+007007000004400000000000000000000006000000a9aa000660066008aaaa80999a99909900000077007000000000000000000000000000765a990000000000
+00077000000ff00000000000000600000005990001949400008aa8000aaaaaa099999990999999907777777000000000000000000000000069a5a00000000000
+00077000000cc0000005a0000959590000a599000094990000999900011111109999999099999b9177777b7100000000000000000000000005a5500000000000
+00700700000cc00000000000000000000000000000000000005005000aaaaaa00100010099999990777777700000000000000000000000000954000000000000
+00000000000110000000000000000000000000000000000000000000011111101010101000909000007070000000000000000000000000005000000000000000
+00000000000000000000000000000000000000000000000000000000000aa0000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00b00b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000bb000000aa0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00044b00000ffa000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00022000000e80000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00044000000e80000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00044000000ee0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000aaaaaaaa00000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000008aaaaaa800000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000006611116600000000000000000111110000000000000000000000000000000000
+000000000000000000000000000000000000000000000000000000000000000066aaaa66000000000000000001bbb110bbbbbbbbbbbbbbbb0000000000000000
+00000000000000000000000000000000000000000000000000000000000000006611116600000000000000000111110000000000000000000000000000000000
+000000000000000000000000000000000000000000000000000000000000000066aaaa6600000000000000000001000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000006611116600000000000000000001000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000aaaaaaaa00000000000000000000000000000000000000000000000000000000
+0000000000000000000000000333330000000000000000000000000000000000000000000000000000000000000000000000000000000000449ff94400000000
+00000000000000000000000003333300000000000000000000000000000000000000000000000000000000000000000000000000000000004999999400000000
+00000000000000000000000003353300000000000000000000000000000000000000000000000000000000000000000000000000000000009119911900444400
+000000000000000000000000033533000000000000000000000000000000000000000000000000000000000000000000000000000000000091c99c1900344300
+00000000000000000000000000050000000000000a00000000000000000000000000000000000000000000000000000000000000000000009ff99ff940444400
+000000000000000000000000000500000000000008000000000000000000000000000000000000000000000000000000000000000000000049f11f9404444440
+00000000000000000000000000050000000000000b00000000000000000000000000000000000000000000000000000000000000000000004f1111f400000004
+00000000000000000000000000050000000000000c00000000000000000000000000000000000000000000000000000000000000000000009f1ee1f900000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000009000000000000000000000aaaa000000000000000000000000900000000000000000000000000000000000000000000000000000000000000000
+0000000000009a0000000000000a90000ab99ba0000000000000a90000000900000a900000000000000000000000000000000000000000000000000000000000
+00000000000090000000a90000a0090009399390000aa000000a90000000a00000ac900000aa9900000000000000000000000000000000000000000000000000
+00000000000a0000000a94490a0000900099a9000099990000aaaa0000090900000a900000989900000000000000000000000000000000000000000000000000
+0009a00000a9000000094444090000a0000a9000009999000000a00000a000000000900000999900000000000000000000000000000000000000000000000000
+00009999000900000000444400900a000909909000000000000a0000090900000000900000090900000000000000000000000000000000000000000000000000
+000000000009a000000094440009a000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+2111111111111111000a444400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+21111112222221110009444400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+22111222211122110000444400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+12222222111112110009a44400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+11222211112112110094499a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+11111111122122110009000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+11111111112221110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+11111111111111110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000088800000000000008880000000000000088000800000008800088000000000888800000000000000880800000000000000088000000000888000000000
+00000888000000000000088808000000000880008088800000088000008000000008888000080000000000088880000000000088080800000000800000800000
+00008898000000000000080000000800008880080088800000888000000000000000000000088000000000080088000000000888000800000000000000000000
+00008899888800000088000000088800008888000088800008988000008800000000008880888800008000000088800000000888000000000000088800000000
+00008889888888000888800000889980088998000008000008998808888800000000888888888800008800000888000000000088880000000000089900800000
+0080088888899800088888888888998008899888880000000888888888980000000888898898880000888988000000000000000088880000000088a980888000
+08880888889999808899988888889880088a888888888000008888999998800000889a8888988000008888888988000000000890888800000000888888888800
+08888888889a998088999888888888888888888888888800008889999a9880000008898888980000000888888998000000008899888880000008888898988800
+88999888888a99808899988888888888888899888998880000899aaa98888000000088888a980000000888aa9988000000088888898888000088888888999880
+8899a88888899888888998999999888888899999999888800089aaa98888000000088889aa980000008888a9988880000088888889988800088888999999a888
+889999888888888888899999aaa9988008899a99999888800889aa98888800000088889aaa88000000888899998888000888888999aa98808899999998888888
+8889999999988880088999aaaaa998000889aaaa9988888008899998888800000888899aa8888000008898899998880008888999999998808899aaa888888888
+888999999a9988000899aaaaaaa988000089aaaa998888000888999988880000088888999888880008888889999998808899999aaaa8888088899aaa88999888
+088999aaaaa98000009aaaa9999980000089aaa9888888000888899988988000088898889998880008888899aaa998808899aaaa888888808888999aaa999888
+0889aaaaaa998000008aaaa999980000008899998988800008888899988888000088898899999880088899aaa99988808889aaaa988880008888899aaa999880
+0009aaaa999800000088999988880000000889998888000000888899999880000000888999aaa88000899999998888000889aaaa988800000888899999998800
+__sfx__
+c10d000021754247542d7542c7042c704007040070400704007040070400704007040070400704007040070400704007040070400704007040070400704007040070400704007040070400704007040070400704
