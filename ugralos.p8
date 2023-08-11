@@ -5,7 +5,15 @@ y=10
 x=50
 vy=3
 cx=0
-ln={10,50,99,33,77}
+--ellensegek
+ln={
+ {spr=3,x=10},
+ {spr=3,x=20},
+ {spr=3,x=40},
+ {spr=3,x=60},
+ {spr=4,x=100},
+}
+
 function _draw()
  cls(3)
  --itt allitjuk be a kamerat
@@ -16,7 +24,7 @@ function _draw()
   cx=cx-1
  end
  for i=1,#ln do
-  spr(3,ln[i],108)
+  spr(ln[i].spr,ln[i].x,108)
  end
  if vy<0 then
   spr(2,x,y)
