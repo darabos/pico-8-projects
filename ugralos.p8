@@ -36,6 +36,13 @@ function _draw()
   vy=-10
   y=100
   sfx(1)
+  for l in all(ln) do
+   d=abs(x-l.x)
+   if d<5 then
+    sfx(2)
+    del(ln,l)
+   end
+  end
  end
  vy=vy+0.5
  irany=0
