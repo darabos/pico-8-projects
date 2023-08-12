@@ -14,6 +14,16 @@ ln={
  {spr=4,x=100},
 }
 
+--a jatekos raugrott l-re
+function hit(l)
+ if l.spr==3 then
+  sfx(1)
+ elseif l.spr==4 then
+  sfx(2)
+  del(ln,l)
+ end
+end
+
 function _draw()
  cls(3)
  --itt allitjuk be a kamerat
@@ -35,12 +45,10 @@ function _draw()
  if y>100 then
   vy=-10
   y=100
-  sfx(1)
   for l in all(ln) do
    d=abs(x-l.x)
    if d<5 then
-    sfx(2)
-    del(ln,l)
+    hit(l)
    end
   end
  end
