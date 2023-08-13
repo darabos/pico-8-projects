@@ -24,7 +24,18 @@ function hit(l)
  end
 end
 
+--kirajzoljuk l-et
+function draw(l)
+ s=l.spr
+ if s==4 then
+  if (t\10)%2==0 then s=5 end
+ end
+ spr(s,l.x,108) 
+end
+
+t=0
 function _draw()
+ t=t+1
  cls(3)
  --itt allitjuk be a kamerat
  camera(cx,0)
@@ -33,8 +44,8 @@ function _draw()
  elseif x<cx+40 then
   cx=cx-1
  end
- for i=1,#ln do
-  spr(ln[i].spr,ln[i].x,108)
+ for l in all(ln) do
+  draw(l)
  end
  if vy<0 then
   spr(2,x,y)
