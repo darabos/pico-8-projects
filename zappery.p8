@@ -47,22 +47,57 @@ function ball(c,r,x,y)
  return b
 end
  
-b=ball(12,5,10,80)
-b2=ball(8,5,10,60)
+b=ball(12,5,0,0)
+b2=ball(8,5,-20,0)
+cx,cy=0,0
+menu=false
 function _draw()
- t+=1
+ if (cx+28<b.tx) cx+=1
+ if (cx+100>b.tx) cx-=1
+ if (cy+28<b.ty) cy+=1
+ if (cy+100>b.ty) cy-=1
+ camera(cx,cy)
  cls()
  b:draw()
  b2:draw()
- for o in all(b2.ops)do
-  o.x+=1
+ if menu then
+	 for o in all(b.ops)do
+   o.x+=1
+	 end
+	end
+ local lx,ly,la=0,0,0
+ for dt in all(track) do
+  local olx,oly,ola=lx,ly,la
+  la+=rotationspeed*dt-0.5
+  lx+=balldistance*cos(la)
+  ly+=balldistance*sin(la)
+  line(olx,oly,lx,ly)
  end
 end
+creating=true
+rotationspeed=0.02
+balldistance=20
+lastswap=0
+track={}
 function _update60()
+ t+=1
  if(btn(⬅️))b.tx-=1
  if(btn(➡️))b.tx+=1
  if(btn(⬆️))b.ty-=1
  if(btn(⬇️))b.ty+=1
+ if btnp(❎) then
+  b,b2=b2,b
+  if creating then
+   add(track,t-lastswap)
+   lastswap=t
+  end
+ end
+ a=atan2(b2.tx-b.tx,b2.ty-b.ty)
+ a+=rotationspeed
+ b2.tx=b.tx+balldistance*cos(a)
+ b2.ty=b.ty+balldistance*sin(a)
+ b2.x=b2.tx
+ b2.y=b2.ty
 end
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
