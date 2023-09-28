@@ -52,14 +52,12 @@ b2=ball(8,5,-20,0)
 cx,cy=0,0
 menu=false
 function _draw()
- if (cx+28<b.tx) cx+=1
- if (cx+100>b.tx) cx-=1
- if (cy+28<b.ty) cy+=1
- if (cy+100>b.ty) cy-=1
- camera(cx,cy)
+ if (cx-40<b.tx) cx+=1
+ if (cx+40>b.tx) cx-=1
+ if (cy-40<b.ty) cy+=1
+ if (cy+40>b.ty) cy-=1
+ camera(cx-64,cy-64)
  cls()
- b:draw()
- b2:draw()
  if menu then
 	 for o in all(b.ops)do
    o.x+=1
@@ -71,26 +69,39 @@ function _draw()
   la+=rotationspeed*dt-0.5
   lx+=balldistance*cos(la)
   ly+=balldistance*sin(la)
-  line(olx,oly,lx,ly)
+  line(olx,oly,lx,ly,5)
+  for bn in all({b,b2}) do
+   for d=10,30,10 do
+    if close(lx-bn.x,ly-bn.y,d) then
+     line(olx+1-2*rnd(),oly+1-2*rnd(),lx+1-2*rnd(),ly+1-2*rnd(),bn.c)
+    end
+   end
+  end
  end
+ b.tx=lx
+ b.ty=ly
+ b:draw()
+ b2:draw()
+end
+function close(dx,dy,d)
+ return abs(dx)<d and abs(dy)<d
 end
 creating=true
 rotationspeed=0.02
 balldistance=20
 lastswap=0
+prevgap=0
 track={}
 function _update60()
  t+=1
- if(btn(⬅️))b.tx-=1
- if(btn(➡️))b.tx+=1
- if(btn(⬆️))b.ty-=1
- if(btn(⬇️))b.ty+=1
  if btnp(❎) then
   b,b2=b2,b
-  if creating then
-   add(track,t-lastswap)
-   lastswap=t
-  end
+  local dt=t-lastswap
+  if (creating) add(track,dt)
+  if (t>14400) t-=14400
+  lastswap=t
+  print(dt<prevgap*0.7 and "\ai6c1" or dt>prevgap*1.3 and "\ai1c2" or "\ai1c1")
+  prevgap=dt
  end
  a=atan2(b2.tx-b.tx,b2.ty-b.ty)
  a+=rotationspeed
@@ -99,10 +110,21 @@ function _update60()
  b2.x=b2.tx
  b2.y=b2.ty
 end
-__gfx__
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00700700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00077000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00077000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00700700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+--[[
+tolerance=3
+function fixtiming(track)
+-- if (true) return track
+ local counts={}
+ for t in all(track) do
+  counts[t]=(counts[t] or 0)+1
+ end
+ local corrected={}
+ for t in all(track) do
+  for i=1,tolerance do
+   if (counts[t+1]or 0>counts[t]) t+=1
+	  if (counts[t-1]or 0>counts[t]) t-=1
+  end
+  add(corrected,t)
+ end
+ return corrected
+end]]
